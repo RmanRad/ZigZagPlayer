@@ -39,7 +39,7 @@ class ZigZagPlayer:
             kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3))
             frame_closed = cv2.morphologyEx(frame_canny, cv2.MORPH_CLOSE, kernel, iterations=1)
 
-
+            
 
             cv2.imshow('Live', frame_closed)
 
