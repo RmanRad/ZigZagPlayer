@@ -29,6 +29,9 @@ class ZigZagPlayer:
 
     def Play(self, feed):
         for frame in feed:
+            
+            pass
+
             cv2.imshow('Live', frame)
 
         
