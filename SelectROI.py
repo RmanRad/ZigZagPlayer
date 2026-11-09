@@ -12,8 +12,8 @@ def SelectROI(sct):
 
     x, y, w, h = roi
 
-    if w <= 100 and h <= 100:
-        print('roi not valid')
+    if w <= 200 and h <= 200:
+        print('roi too small to be valid')
         return
 
     return {'left': x, 'top': y, 'width': w, 'height': h}
