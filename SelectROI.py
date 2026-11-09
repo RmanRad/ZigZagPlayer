@@ -6,7 +6,7 @@ def SelectROI(sct):
 
     cv2.imshow('Select The ROI', screenshot)
     
-    roi = cv2.selectROI('Select The ROI', screenshot)
+    roi = cv2.selectROI('Select The ROI', screenshot, False)
 
     cv2.destroyWindow('Select The ROI')
 

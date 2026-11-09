@@ -9,4 +9,6 @@ config = {
 
 Player1 = ZigZagPlayer(config)
 
-Player1.Play()
+feed = Player1.Feed()
+
+Player1.Play(feed)

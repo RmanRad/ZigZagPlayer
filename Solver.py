@@ -7,18 +7,28 @@ from SelectROI import SelectROI
 class ZigZagPlayer:
     def __init__(self, cnf):
         self.debug_mode = cnf['debug_mode']
-        # self.frame = None
 
-    def Play(self):
+    def Feed(self):
         with mss.mss() as sct:
             monitor = SelectROI(sct)
 
-            if monitor is not None:
-                while True:
+            while True:
+                if monitor is not None:
                     frame = np.array(sct.grab(monitor))
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
 
-                    cv2.imshow('Live', frame)
+                    yield frame
 
                     if cv2.waitKey(1) & 0xFF == ord('q'):
+                        print('done')
                         break
+
+                else:
+                    print('No feed')
+                    continue
+
+    def Play(self, feed):
+        for frame in feed:
+            cv2.imshow('Live', frame)
+
+        
