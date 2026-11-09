@@ -16,7 +16,7 @@ class ZigZagPlayer:
             if monitor is not None:
                 while True:
                     frame = np.array(sct.grab(monitor))
-                    frame = cv2.cvtColor(self.frame, cv2.COLOR_BGRA2BGR)
+                    frame = cv2.cvtColor(frame, cv2.COLOR_BGRA2BGR)
 
                     cv2.imshow('Live', frame)
 
