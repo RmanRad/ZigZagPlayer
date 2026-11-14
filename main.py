@@ -1,11 +1,8 @@
 from player import ZigZagPlayer
 import cv2
 
-config = {
-    'debug_mode': True
-}
 
-Player1 = ZigZagPlayer(config)
+Player1 = ZigZagPlayer()
 # Player1.Play(Player1.Feed())
 
 
