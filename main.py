@@ -1,11 +1,8 @@
 from player import ZigZagPlayer
 
-config = {
-    'debug_mode': True
-}
 
-Player1 = ZigZagPlayer(config)
-Player1.Play(Player1.Feed())
+Player1 = ZigZagPlayer()
+# Player1.Play(Player1.Feed())
 
 
 # video = cv2.VideoCapture('AurigaTasks/ZigZagPlayer/Recording 2026-11-10 003117.mp4')
