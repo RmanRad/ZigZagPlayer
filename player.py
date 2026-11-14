@@ -2,6 +2,10 @@ import numpy as np
 import cv2, mss, time, pyautogui
 from SelectROI import SelectROI
 
+def location(event, x, y, flag, param):
+    if event == cv2.EVENT_RBUTTONDOWN:
+        print(f'coordinates: {x, y} or {x/param.shape[1], y/param.shape[0]}')
+
 class ZigZagPlayer:
     def __init__(self, cnf):
         self.debug_mode = cnf['debug_mode']
@@ -44,18 +48,17 @@ class ZigZagPlayer:
 
             # find the ball
             ball_cx = self.ball_cx + (self.velocity * self.process_time) # prediction
-            # ball_cy = self.ball_cy # doesnt change
-            ball_contour = self.ball_contour + np.array([[[(self.velocity * self.process_time, 0)]]], 'uint8') # predicted
+            ball_cy = self.ball_cy # doesnt change
+            ball_contour = self.ball_contour # np.array([[[(self.velocity * self.process_time, 0)]]], 'uint8') # predicted
 
             if contours is not None:
                 for contour in contours:
                     M = cv2.moments(contour)
-                    if (200 <= cv2.contourArea(contour) <= 260) and (285 <= M['m01'] / M['m00'] <= 315):
+                    if (200 <= cv2.contourArea(contour) <= 260) and (280 <= M['m01'] / M['m00'] <= 320):
                         ball_contour = contour
                         ball_cx = M['m10'] / M['m00'] if M['m00'] > 0 else 155
-                        ball_cy = M['m01'] / M['m00'] if M['m00'] > 0 else 295
-                        cv2.putText('found ball')
                         break
+
         
             velocity = (ball_cx - self.ball_cx) / self.process_time
             self.ball_cx = ball_cx
@@ -76,7 +79,8 @@ class ZigZagPlayer:
             pt1 = (int(ball_cx), int(ball_cy + 10))
             pt2 = (int(ball_cx + length), int(ball_cy + (slope*length) + 10))
 
-            frame_trajectory = cv2.line(frame, pt1, pt2, (0,100,0), 3)
+            frame_trajectory = cv2.line(frame_ball, pt1, pt2, (0,100,0), 3)
+            frame_trajectory_2 = cv2.line(frame, pt1, pt2, (0,100,0), 3)
 
             if velocity > 0:
                 x_range = range(pt1[0] + 10, frame.shape[1])
@@ -97,7 +101,7 @@ class ZigZagPlayer:
                 print('click')
                 self.lastframeclicked = True
                 self.velocity = -self.velocity
-                # pyautogui.click()
+                pyautogui.click()
 
             else:
                 self.lastframeclicked = False
@@ -107,17 +111,21 @@ class ZigZagPlayer:
             
 
             frame_trajectory = cv2.line(frame_trajectory, pt1, (x_intersection, y_intersection), (0,0,200), 2)
+            frame_trajectory_2 = cv2.line(frame_trajectory, pt1, (x_intersection, y_intersection), (0,0,200), 2)
 
             self.process_time = time.perf_counter() - start_time
 
-            cv2.imshow('result1', frame)
+            # cv2.imshow('result1', frame)
             cv2.imshow('result2', frame_ball)
-            cv2.imshow('result3', frame_canny)
+            # cv2.imshow('result3', frame_canny)
             cv2.imshow('result4', frame_trajectory)
+            # cv2.imshow('result5', frame_trajectory_2)
 
-            if cv2.waitKey(0) & 0xFF == ord('n'):
-                pass
+            # cv2.setMouseCallback('result4', location, frame)
 
-            if cv2.waitKey(100) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
-                break
+            # if cv2.waitKey(0) & 0xFF == ord('n'):
+            #     pass
+
+            # if cv2.waitKey(100) & 0xFF == ord('q'):
+            #     cv2.destroyAllWindows()
+            #     break
