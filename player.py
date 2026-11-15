@@ -9,7 +9,6 @@ def coordinate(event, x, y, flag, param):
 
 
 def line_intersection(p1, p2, q1, q2):
-
     x1, y1 = p1
     x2, y2 = p2
     x3, y3 = q1
@@ -17,17 +16,20 @@ def line_intersection(p1, p2, q1, q2):
 
     denominator = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4)
 
-    # Parallel lines
-    if denominator == 0:
+    if abs(denominator) < 1e-8:
         return None
 
     t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / denominator
+
+    u = ((x1-x3)*(y1-y2) - (y1-y3)*(x1-x2)) / denominator
+
+    if t < 0 or u < 0 or u > 1:
+        return None
 
     x = x1 + t*(x2-x1)
     y = y1 + t*(y2-y1)
 
     return int(x), int(y)
-
 
 
 class ZigZagPlayer:
@@ -86,7 +88,7 @@ class ZigZagPlayer:
             t3 = time.time()
 
             # edges no shadow ----- no ball?
-            frame_canny = cv2.Canny(frame_gray, 85, 150)
+            frame_canny = cv2.Canny(frame_gray, 15, 50)
             frame_canny = cv2.morphologyEx(frame_canny, cv2.MORPH_CLOSE, np.ones((3,3), 'uint8'))
             # frame_canny_gray = cv2.Canny(frame_gray, 60, 120)
             # frame_canny_gray_s = cv2.bitwise_and(frame_canny_s, frame_canny_gray, mask=None)
@@ -137,16 +139,15 @@ class ZigZagPlayer:
             frame = cv2.line(frame, pt1, pt2, (0,100,0), 3)
 
             blnk = np.zeros(frame_canny.shape)
-            lines = cv2.HoughLinesP(frame_canny, 2, 1*np.pi/180, 45, minLineLength=8, maxLineGap=10)
+            lines = cv2.HoughLinesP(frame_canny, 1, np.pi/180, 20, minLineLength=10, maxLineGap=10)
             if lines is not None:
                 for line in lines:
                     x1, y1, x2, y2 = line
-                    line_slope = np.rad2deg(np.arctan((y2 - y1)/(x2 - x1)))
+                    line_slope = np.rad2deg(np.arctan2((y2 - y1), (x2 - x1)))
                     # print(line_slope)
                     
-                    if -27 <= line_slope <= -26 or 26 <= line_slope <= 27:
+                    if -27 <= line_slope <= -25 or 25 <= line_slope <= 27:
                         blnk = cv2.line(blnk, (x1,y1), (x2,y2), (255,255,255), 2)
-
                         intersection = line_intersection(pt1, pt2, (x1,y1), (x2,y2))
     
                         if intersection is not None and not self.first_intersection:
@@ -155,9 +156,9 @@ class ZigZagPlayer:
                                 print('intersection found')
                                 x_intersection, y_intersection = intersection
                                 cv2.circle(frame, (x_intersection, y_intersection), 6, (0,0,255), -1)
-                                self.first_intersection = True
+                                # self.first_intersection = True
             
-            self.first_intersection = False
+            # self.first_intersection = False
         
 
             # if velocity > 0:
@@ -207,9 +208,9 @@ class ZigZagPlayer:
 
             # print(f'timers : transformation: {t1 - t0}, thresholding: {t2 - t1}, getting contours {t3  - t2},  s_canny, morphology: {t4 - t3}, ball detection: {t5 - t4} click_time: {t7 - t6}')
 
-            # if cv2.waitKey(0) & 0xFF == ord('n'):
-            #     pass
+            if cv2.waitKey(0) & 0xFF == ord('n'):
+                pass
 
-            # if cv2.waitKey(100) & 0xFF == ord('q'):
-            #     cv2.destroyAllWindows()
-            #     break
+            if cv2.waitKey(100) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
+                break
