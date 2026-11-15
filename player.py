@@ -8,6 +8,27 @@ def coordinate(event, x, y, flag, param):
         print(f'location {x,y}')
 
 
+def line_intersection(p1, p2, q1, q2):
+
+    x1, y1 = p1
+    x2, y2 = p2
+    x3, y3 = q1
+    x4, y4 = q2
+
+    denominator = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4)
+
+    # Parallel lines
+    if denominator == 0:
+        return None
+
+    t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / denominator
+
+    x = x1 + t*(x2-x1)
+    y = y1 + t*(y2-y1)
+
+    return int(x), int(y)
+
+
 
 class ZigZagPlayer:
     def __init__(self):
@@ -18,6 +39,7 @@ class ZigZagPlayer:
         self.velocity = 2500
         self.distance_buffer = [1000, 1000]
         self.lastframeclicked = False
+        self.first_intersection = False
 
     def Feed(self):
         with mss.mss() as sct:
@@ -41,25 +63,35 @@ class ZigZagPlayer:
 
 
     def Play(self, feed):
-        start_time = time.perf_counter()
+        # start_time = time.time()
 
         for frame in feed:
+            t0 = time.time()
+
+            frame = frame[150:500, :, :]
+
             frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
+            t1 = time.time()
+
+
             # ball robust
             _, frame_ball_t = cv2.threshold(frame_gray, 50, 255, cv2.THRESH_BINARY_INV) 
+            
+            t2 = time.time()
+            
             contours, _ = cv2.findContours(frame_ball_t, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-
+            
+            t3 = time.time()
 
             # edges no shadow ----- no ball?
-            frame_canny_s = cv2.Canny(frame_hsv[:, :, 1], 60, 120)
-            frame_canny_gray = cv2.Canny(frame_gray, 60, 120)
-            frame_canny_gray_s = cv2.bitwise_and(frame_canny_s, frame_canny_gray, mask=None)
-            # frame_canny_gray_s = cv2.dilate(frame_canny_gray_s, np.ones((3,3), 'uint8'), iterations=2)
-            # frame_canny_gray_s = cv2.morphologyEx(frame_canny_gray_s, cv2.MORPH_OPEN, np.ones((3,3), 'uint8'))
-
-
+            frame_canny = cv2.Canny(frame_gray, 85, 150)
+            frame_canny = cv2.morphologyEx(frame_canny, cv2.MORPH_CLOSE, np.ones((3,3), 'uint8'))
+            # frame_canny_gray = cv2.Canny(frame_gray, 60, 120)
+            # frame_canny_gray_s = cv2.bitwise_and(frame_canny_s, frame_canny_gray, mask=None)
+            t4 = time.time()
+           
             # find the ball
             ball_cx = self.ball_cx # past
             ball_cy = self.ball_cy # doesnt change
@@ -68,19 +100,20 @@ class ZigZagPlayer:
             if contours is not None:
                 for contour in contours:
                     M = cv2.moments(contour)
-                    if (90 <= cv2.contourArea(contour) <= 100) and (280 <= M['m01'] / M['m00'] <= 320):
+                    if (90 <= cv2.contourArea(contour) <= 100) and (110 <= M['m01'] / M['m00'] <= 170):
                         ball_contour = contour
                         # print(f'area : {cv2.contourArea(ball_contour)}')
                         ball_cx = M['m10'] / M['m00'] 
                         ball_cy = M['m01'] / M['m00']
                         break
 
+            t5 = time.time()
+
             new_velocity = (ball_cx - self.ball_cx) / 0.001
 
             alpha = 0.25
             velocity = alpha * new_velocity + (1 - alpha) * self.velocity
         
-
             # set to the memory
             self.ball_cx = ball_cx
             self.ball_cy = ball_cy
@@ -103,18 +136,42 @@ class ZigZagPlayer:
 
             frame = cv2.line(frame, pt1, pt2, (0,100,0), 3)
 
-            if velocity > 0:
-                x_range = range(pt1[0] + 15, frame.shape[1])
-                
-            else:
-                x_range = range(pt1[0] - 15, -1, -1)
+            blnk = np.zeros(frame_canny.shape)
+            lines = cv2.HoughLinesP(frame_canny, 2, 1*np.pi/180, 45, minLineLength=8, maxLineGap=10)
+            if lines is not None:
+                for line in lines:
+                    x1, y1, x2, y2 = line
+                    line_slope = np.rad2deg(np.arctan((y2 - y1)/(x2 - x1)))
+                    # print(line_slope)
+                    
+                    if -27 <= line_slope <= -26 or 26 <= line_slope <= 27:
+                        blnk = cv2.line(blnk, (x1,y1), (x2,y2), (255,255,255), 2)
 
-            x_intersection, y_intersection = pt2[0], pt2[1]
-            for x in x_range:
-                y = int(pt1[1] + (slope * (x - pt1[0])))
-                if frame_canny_gray_s[y,x] != 0 or frame_canny_gray_s[y+1,x] != 0 or frame_canny_gray_s[y-1,x] != 0:
-                    x_intersection, y_intersection = x, y
-                    break
+                        intersection = line_intersection(pt1, pt2, (x1,y1), (x2,y2))
+    
+                        if intersection is not None and not self.first_intersection:
+                            condition = intersection[0] > pt1[0] + 10 if velocity > 0 else intersection[0] < pt1[0] - 10
+                            if condition:
+                                print('intersection found')
+                                x_intersection, y_intersection = intersection
+                                cv2.circle(frame, (x_intersection, y_intersection), 6, (0,0,255), -1)
+                                self.first_intersection = True
+            
+            self.first_intersection = False
+        
+
+            # if velocity > 0:
+            #     x_range = range(pt1[0] + 15, frame.shape[1])
+                
+            # else:
+            #     x_range = range(pt1[0] - 15, -1, -1)
+
+            # x_intersection, y_intersection = pt2[0], pt2[1]
+            # for x in x_range:
+            #     y = int(pt1[1] + (slope * (x - pt1[0])))
+            #     if frame_gray[y,x] != 0 or frame_gray[y+1,x] != 0 or frame_gray[y-1,x] != 0:
+            #         x_intersection, y_intersection = x, y
+            #         break
 
             distance = np.linalg.norm([x_intersection - ball_cx, y_intersection - ball_cy])
             print(distance)
@@ -122,29 +179,37 @@ class ZigZagPlayer:
             if self.lastframeclicked == 1:
                 self.lastframeclicked = 0
 
-            if ((self.distance_buffer[0] + self.distance_buffer[1]*2 + distance*3)/6) <= 35 and self.lastframeclicked == 0:
+
+            t6 = time.time()
+            # if ((self.distance_buffer[0] + self.distance_buffer[1]*2 + distance*3)/6) <= 35 and self.lastframeclicked == 0:
+            if (self.distance_buffer[1] + distance*2)/3 <= 35 and self.lastframeclicked == 0:
                 print('click')
                 self.lastframeclicked += 1
                 self.velocity = -self.velocity
                 # pyautogui.click()
+
+            t7 = time.time()
 
             self.distance_buffer[0] = self.distance_buffer[1]
             self.distance_buffer[1] = distance
 
             frame = cv2.line(frame, pt1, (x_intersection, y_intersection), (0,0,200), 2)
 
-            self.process_time = time.perf_counter() - start_time
+            # self.process_time = time.time() - start_time
 
+            cv2.imshow('hough_line', blnk)
             cv2.imshow('frame', frame)
-            cv2.imshow('ball', frame_ball)
-            cv2.imshow('canny_s', frame_canny_s)
-            cv2.imshow('canny_gray', frame_canny_gray)
+            # cv2.imshow('ball', frame_ball)
+            # cv2.imshow('gray', frame_gray)
+            cv2.imshow('frame_canny', frame_canny)
 
-            cv2.setMouseCallback('frame', coordinate, frame)
+            # cv2.setMouseCallback('frame', coordinate, frame)
 
-            if cv2.waitKey(0) & 0xFF == ord('n'):
-                pass
+            # print(f'timers : transformation: {t1 - t0}, thresholding: {t2 - t1}, getting contours {t3  - t2},  s_canny, morphology: {t4 - t3}, ball detection: {t5 - t4} click_time: {t7 - t6}')
 
-            if cv2.waitKey(100) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
-                break
+            # if cv2.waitKey(0) & 0xFF == ord('n'):
+            #     pass
+
+            # if cv2.waitKey(100) & 0xFF == ord('q'):
+            #     cv2.destroyAllWindows()
+            #     break
