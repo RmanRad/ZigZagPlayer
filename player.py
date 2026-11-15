@@ -70,10 +70,10 @@ class ZigZagPlayer:
         for frame in feed:
             t0 = time.time()
 
-            frame = frame[150:500, :, :]
+            frame = frame[150:450, :, :]
 
             frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            # frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
             t1 = time.time()
 
@@ -88,8 +88,9 @@ class ZigZagPlayer:
             t3 = time.time()
 
             # edges no shadow ----- no ball?
-            frame_canny = cv2.Canny(frame_gray, 15, 50)
-            frame_canny = cv2.morphologyEx(frame_canny, cv2.MORPH_CLOSE, np.ones((3,3), 'uint8'))
+            # frame_equalized = cv2.equalizeHist(frame_gray)
+            frame_canny = cv2.Canny(frame, 5, 30)
+            # frame_canny = cv2.morphologyEx(frame_canny, cv2.MORPH_CLOSE, np.ones((3,3), 'uint8'), iterations=1)
             # frame_canny_gray = cv2.Canny(frame_gray, 60, 120)
             # frame_canny_gray_s = cv2.bitwise_and(frame_canny_s, frame_canny_gray, mask=None)
             t4 = time.time()
@@ -138,8 +139,10 @@ class ZigZagPlayer:
 
             frame = cv2.line(frame, pt1, pt2, (0,100,0), 3)
 
+
+            x_intersection, y_intersection = pt2[0], pt2[1]
             blnk = np.zeros(frame_canny.shape)
-            lines = cv2.HoughLinesP(frame_canny, 1, np.pi/180, 20, minLineLength=10, maxLineGap=10)
+            lines = cv2.HoughLinesP(frame_canny, 1, 1*np.pi/180, 10, minLineLength=10, maxLineGap=8)
             if lines is not None:
                 for line in lines:
                     x1, y1, x2, y2 = line
@@ -177,17 +180,18 @@ class ZigZagPlayer:
             distance = np.linalg.norm([x_intersection - ball_cx, y_intersection - ball_cy])
             print(distance)
 
-            if self.lastframeclicked == 1:
-                self.lastframeclicked = 0
+            # if self.lastframeclicked == 1:
+            #     self.lastframeclicked = 0
 
 
             t6 = time.time()
-            # if ((self.distance_buffer[0] + self.distance_buffer[1]*2 + distance*3)/6) <= 35 and self.lastframeclicked == 0:
-            if (self.distance_buffer[1] + distance*2)/3 <= 35 and self.lastframeclicked == 0:
+            # if ((self.distance_buffer[0] + self.distance_buffer[1]*2 + distance*3)/6) <= 35: #and self.lastframeclicked == 0:
+            if (self.distance_buffer[1] + distance*3)/4 <= 35: # and self.lastframeclicked == 0:
+            # if distance <= 30:
                 print('click')
                 self.lastframeclicked += 1
                 self.velocity = -self.velocity
-                # pyautogui.click()
+                pyautogui.click()
 
             t7 = time.time()
 
@@ -200,6 +204,7 @@ class ZigZagPlayer:
 
             cv2.imshow('hough_line', blnk)
             cv2.imshow('frame', frame)
+            cv2.imshow('equalized', frame_gray)
             # cv2.imshow('ball', frame_ball)
             # cv2.imshow('gray', frame_gray)
             cv2.imshow('frame_canny', frame_canny)
@@ -208,9 +213,9 @@ class ZigZagPlayer:
 
             # print(f'timers : transformation: {t1 - t0}, thresholding: {t2 - t1}, getting contours {t3  - t2},  s_canny, morphology: {t4 - t3}, ball detection: {t5 - t4} click_time: {t7 - t6}')
 
-            if cv2.waitKey(0) & 0xFF == ord('n'):
-                pass
+            # if cv2.waitKey(0) & 0xFF == ord('n'):
+            #     pass
 
-            if cv2.waitKey(100) & 0xFF == ord('q'):
-                cv2.destroyAllWindows()
-                break
+            # if cv2.waitKey(100) & 0xFF == ord('q'):
+            #     cv2.destroyAllWindows()
+            #     break
