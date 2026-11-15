@@ -40,8 +40,9 @@ class ZigZagPlayer:
         self.ball_contour = None
         self.velocity = 2500
         self.distance_buffer = [1000, 1000]
+        self.blnk = None
         self.lastframeclicked = False
-        self.first_intersection = False
+        # self.first_intersection = False
 
     def Feed(self):
         with mss.mss() as sct:
@@ -89,7 +90,7 @@ class ZigZagPlayer:
 
             # edges no shadow ----- no ball?
             # frame_equalized = cv2.equalizeHist(frame_gray)
-            frame_canny = cv2.Canny(frame, 5, 30)
+            frame_canny = cv2.Canny(frame, 10, 30)
             # frame_canny = cv2.morphologyEx(frame_canny, cv2.MORPH_CLOSE, np.ones((3,3), 'uint8'), iterations=1)
             # frame_canny_gray = cv2.Canny(frame_gray, 60, 120)
             # frame_canny_gray_s = cv2.bitwise_and(frame_canny_s, frame_canny_gray, mask=None)
@@ -110,7 +111,7 @@ class ZigZagPlayer:
                         ball_cy = M['m01'] / M['m00']
                         break
 
-            t5 = time.time()
+            # t5 = time.time()
 
             new_velocity = (ball_cx - self.ball_cx) / 0.001
 
@@ -142,7 +143,7 @@ class ZigZagPlayer:
 
             x_intersection, y_intersection = pt2[0], pt2[1]
             blnk = np.zeros(frame_canny.shape)
-            lines = cv2.HoughLinesP(frame_canny, 1, 1*np.pi/180, 10, minLineLength=10, maxLineGap=8)
+            lines = cv2.HoughLinesP(frame_canny, 1, 1*np.pi/180, 29, minLineLength=12, maxLineGap=10)
             if lines is not None:
                 for line in lines:
                     x1, y1, x2, y2 = line
@@ -150,18 +151,23 @@ class ZigZagPlayer:
                     # print(line_slope)
                     
                     if -27 <= line_slope <= -25 or 25 <= line_slope <= 27:
-                        blnk = cv2.line(blnk, (x1,y1), (x2,y2), (255,255,255), 2)
+                        # blnk = cv2.line(blnk, (x1,y1), (x2,y2), (255,255,255), 2)
                         intersection = line_intersection(pt1, pt2, (x1,y1), (x2,y2))
     
-                        if intersection is not None and not self.first_intersection:
-                            condition = intersection[0] > pt1[0] + 10 if velocity > 0 else intersection[0] < pt1[0] - 10
+                        if intersection is not None: # and not self.first_intersection:
+
+                            condition = intersection[0] > pt1[0] + 5 if velocity > 0 else intersection[0] < pt1[0] - 5
                             if condition:
                                 print('intersection found')
+                                blnk = cv2.line(blnk, (x1,y1), (x2,y2), (255,255,255), 2)
                                 x_intersection, y_intersection = intersection
                                 cv2.circle(frame, (x_intersection, y_intersection), 6, (0,0,255), -1)
                                 # self.first_intersection = True
             
             # self.first_intersection = False
+            if self.blnk is not None:
+                blnk = cv2.bitwise_and(blnk, self.blnk, mask=None)
+                self.blnk = blnk
         
 
             # if velocity > 0:
@@ -180,18 +186,17 @@ class ZigZagPlayer:
             distance = np.linalg.norm([x_intersection - ball_cx, y_intersection - ball_cy])
             print(distance)
 
-            # if self.lastframeclicked == 1:
-            #     self.lastframeclicked = 0
-
-
             t6 = time.time()
             # if ((self.distance_buffer[0] + self.distance_buffer[1]*2 + distance*3)/6) <= 35: #and self.lastframeclicked == 0:
-            if (self.distance_buffer[1] + distance*3)/4 <= 35: # and self.lastframeclicked == 0:
-            # if distance <= 30:
+            # if (self.distance_buffer[1] + distance*3)/4 <= 35: # and self.lastframeclicked == 0:
+            if distance <= 29: # and not self.lastframeclicked:
                 print('click')
                 self.lastframeclicked += 1
                 self.velocity = -self.velocity
                 pyautogui.click()
+
+            if self.lastframeclicked == 1:
+                self.lastframeclicked = 0
 
             t7 = time.time()
 
