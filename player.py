@@ -44,15 +44,21 @@ class ZigZagPlayer:
         start_time = time.perf_counter()
 
         for frame in feed:
-            frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-            frame_canny_s = cv2.Canny(frame_hsv[:, :, 1], 60, 120)
-
-            _, frame_ball_t = cv2.threshold(frame_gray, 50, 255, cv2.THRESH_BINARY_INV)
-            # frame_canny_and = cv2.bitwise_and(frame_canny, frame_ball_t, mask=None)
-
+            # ball robust
+            _, frame_ball_t = cv2.threshold(frame_gray, 50, 255, cv2.THRESH_BINARY_INV) 
             contours, _ = cv2.findContours(frame_ball_t, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+
+            # edges no shadow ----- no ball?
+            frame_canny_s = cv2.Canny(frame_hsv[:, :, 1], 60, 120)
+            frame_canny_gray = cv2.Canny(frame_gray, 60, 120)
+            frame_canny_gray_s = cv2.bitwise_and(frame_canny_s, frame_canny_gray, mask=None)
+            # frame_canny_gray_s = cv2.dilate(frame_canny_gray_s, np.ones((3,3), 'uint8'), iterations=2)
+            # frame_canny_gray_s = cv2.morphologyEx(frame_canny_gray_s, cv2.MORPH_OPEN, np.ones((3,3), 'uint8'))
+
 
             # find the ball
             ball_cx = self.ball_cx # past
@@ -68,8 +74,12 @@ class ZigZagPlayer:
                         ball_cx = M['m10'] / M['m00'] 
                         ball_cy = M['m01'] / M['m00']
                         break
+
+            new_velocity = (ball_cx - self.ball_cx) / 0.001
+
+            alpha = 0.25
+            velocity = alpha * new_velocity + (1 - alpha) * self.velocity
         
-            velocity = (ball_cx - self.ball_cx) / 0.001
 
             # set to the memory
             self.ball_cx = ball_cx
@@ -94,15 +104,15 @@ class ZigZagPlayer:
             frame = cv2.line(frame, pt1, pt2, (0,100,0), 3)
 
             if velocity > 0:
-                x_range = range(pt1[0] + 10, frame.shape[1])
+                x_range = range(pt1[0] + 15, frame.shape[1])
                 
             else:
-                x_range = range(pt1[0] - 10, -1, -1)
+                x_range = range(pt1[0] - 15, -1, -1)
 
             x_intersection, y_intersection = pt2[0], pt2[1]
             for x in x_range:
                 y = int(pt1[1] + (slope * (x - pt1[0])))
-                if frame_canny_s[y,x] != 0 or frame_canny_s[y+1,x] != 0 or frame_canny_s[y-1,x] != 0:
+                if frame_canny_gray_s[y,x] != 0 or frame_canny_gray_s[y+1,x] != 0 or frame_canny_gray_s[y-1,x] != 0:
                     x_intersection, y_intersection = x, y
                     break
 
@@ -115,8 +125,8 @@ class ZigZagPlayer:
             if ((self.distance_buffer[0] + self.distance_buffer[1]*2 + distance*3)/6) <= 35 and self.lastframeclicked == 0:
                 print('click')
                 self.lastframeclicked += 1
-                # self.velocity = -self.velocity
-                pyautogui.click()
+                self.velocity = -self.velocity
+                # pyautogui.click()
 
             self.distance_buffer[0] = self.distance_buffer[1]
             self.distance_buffer[1] = distance
@@ -127,14 +137,14 @@ class ZigZagPlayer:
 
             cv2.imshow('frame', frame)
             cv2.imshow('ball', frame_ball)
-            # cv2.imshow('canny', frame_canny_s)
-            # cv2.imshow('canny_ball', frame_ball_t)
+            cv2.imshow('canny_s', frame_canny_s)
+            cv2.imshow('canny_gray', frame_canny_gray)
 
             cv2.setMouseCallback('frame', coordinate, frame)
 
-            # if cv2.waitKey(0) & 0xFF == ord('n'):
-            #     pass
+            if cv2.waitKey(0) & 0xFF == ord('n'):
+                pass
 
-            # if cv2.waitKey(100) & 0xFF == ord('q'):
-            #     cv2.destroyAllWindows()
-            #     break
+            if cv2.waitKey(100) & 0xFF == ord('q'):
+                cv2.destroyAllWindows()
+                break
