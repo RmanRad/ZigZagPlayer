@@ -89,8 +89,11 @@ class ZigZagPlayer:
             t3 = time.time()
 
             # edges no shadow ----- no ball?
+            clahe = cv2.createCLAHE(clipLimit=4, tileGridSize=(8,8))
+            frame_equalized = clahe.apply(frame_gray)
             # frame_equalized = cv2.equalizeHist(frame_gray)
-            frame_canny = cv2.Canny(frame, 60, 150)
+            # frame_equalized = cv2.equalizeHist(frame_equalized)
+            frame_canny = cv2.Canny(frame_equalized, 70, 150)
             # frame_canny = cv2.morphologyEx(frame, cv2.MORPH_CLOSE, np.ones((3,3), 'uint8'), iterations=1)
             # frame_canny_gray = cv2.Canny(frame_gray, 60, 120)
             # frame_canny_gray_s = cv2.bitwise_and(frame_canny_s, frame_canny_gray, mask=None)
@@ -142,7 +145,7 @@ class ZigZagPlayer:
 
             x_intersection, y_intersection = pt2
             blnk = np.zeros(frame_canny.shape)
-            lines = cv2.HoughLinesP(frame_canny, 1, 1*np.pi/180, 30, minLineLength=9, maxLineGap=10)
+            lines = cv2.HoughLinesP(frame_canny, 1, 1*np.pi/180, 35, minLineLength=10, maxLineGap=10)
             if lines is not None:
                 for line in lines:
                     x1, y1, x2, y2 = line
@@ -195,15 +198,15 @@ class ZigZagPlayer:
 
             t6 = time.time()
             # if ((self.distance_buffer[0] + self.distance_buffer[1]*2 + distance*3)/6) <= 35: #and self.lastframeclicked == 0:
-            # if (self.distance_buffer[1] + distance*3)/4 <= 30: # and self.lastframeclicked == 0:
-            if distance <= 30: # and not self.lastframeclicked:
+            # if (self.distance_buffer[1] + distance*3)/4 <= 30 and self.lastframeclicked == 0:
+            if distance <= 30 and not self.lastframeclicked:
                 print('click')
-                # self.lastframeclicked += 1
+                self.lastframeclicked += 1
                 self.velocity = -self.velocity
                 pyautogui.click()
 
-            # if self.lastframeclicked == 1:
-            #     self.lastframeclicked = 0
+            if self.lastframeclicked == 1:
+                self.lastframeclicked = 0
 
             t7 = time.time()
 
@@ -216,9 +219,9 @@ class ZigZagPlayer:
 
             cv2.imshow('hough_line', blnk)
             cv2.imshow('frame', frame)
-            # cv2.imshow('equalized', frame_gray)
+            cv2.imshow('equalized', frame_equalized)
             # cv2.imshow('ball', frame_ball)
-            # cv2.imshow('gray', frame_gray)
+            cv2.imshow('gray', frame_gray)
             cv2.imshow('frame_canny', frame_canny)
 
             # cv2.setMouseCallback('frame', coordinate, frame)
