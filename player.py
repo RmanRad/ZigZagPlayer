@@ -73,8 +73,7 @@ class ZigZagPlayer:
 
             frame = frame[150:300, :, :]
 
-            frame_blur = cv2.GaussianBlur(frame, (5,5), 0)
-            frame_gray = cv2.cvtColor(frame_blur, cv2.COLOR_BGR2GRAY)
+            frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
             # frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -91,13 +90,13 @@ class ZigZagPlayer:
             t3 = time.time()
 
             # edges no shadow ----- no ball?
-            # clahe = cv2.createCLAHE(clipLimit=5, tileGridSize=(8,8))
-            # frame_equalized = clahe.apply(frame_gray)
+            clahe = cv2.createCLAHE(clipLimit=2, tileGridSize=(8,8))
+            frame_gray = clahe.apply(frame_gray)
             # frame_equalized = cv2.equalizeHist(frame_gray)
             # frame_equalized = cv2.equalizeHist(frame_equalized)
-            # frame_blur = cv2.GaussianBlur(frame, (7,7), 0)
-            frame_canny = cv2.Canny(frame_gray, 60, 150)
-            # frame_canny = cv2.morphologyEx(frame_canny, cv2.MORPH_CLOSE, np.ones((3,3), 'uint8'), iterations=1)
+            frame_blur = cv2.GaussianBlur(frame_gray, (7,7), 1)
+            frame_canny = cv2.Canny(frame_blur, 60, 150)
+            frame_canny = cv2.morphologyEx(frame_canny, cv2.MORPH_CLOSE, np.ones((3,3), 'uint8'), iterations=1)
             # diamond_mask = cv2.inRange(frame_hsv, np.array([150, 50, 50]), np.array([170, 255, 255]))
             # diamond_mask = cv2.dilate(diamond_mask, np.ones((3,3), 'uint8'), iterations=1)
             # frame_canny = cv2.bitwise_and(frame_canny, cv2.bitwise_not(diamond_mask), mask=None)
@@ -112,7 +111,7 @@ class ZigZagPlayer:
             if contours is not None:
                 for contour in contours:
                     M = cv2.moments(contour)
-                    if (80 <= cv2.contourArea(contour) <= 110) and (120 <= M['m01'] / M['m00'] <= 170):
+                    if (90 <= cv2.contourArea(contour) <= 110) and (110 <= M['m01'] / M['m00'] <= 170):
                         ball_contour = contour
                         # print(f'area : {cv2.contourArea(ball_contour)}')
                         ball_cx = M['m10'] / M['m00'] 
@@ -229,7 +228,7 @@ class ZigZagPlayer:
             cv2.imshow('gray', frame_gray)
             cv2.imshow('frame_canny', frame_canny)
 
-            cv2.setMouseCallback('frame', coordinate, frame)
+            # cv2.setMouseCallback('frame', coordinate, frame)
 
             # print(f'timers : transformation: {t1 - t0}, thresholding: {t2 - t1}, getting contours {t3  - t2},  s_canny, morphology: {t4 - t3}, ball detection: {t5 - t4} click_time: {t7 - t6}')
 
