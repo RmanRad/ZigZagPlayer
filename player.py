@@ -41,7 +41,7 @@ class ZigZagPlayer:
         self.velocity = 2500
         self.distance_buffer = [1000, 1000]
         self.blnk = None
-        self.lastframeclicked = False
+        # self.lastframeclicked = False
         # self.first_intersection = False
 
     def Feed(self):
@@ -158,7 +158,7 @@ class ZigZagPlayer:
                 for line in lines:
                     x1, y1, x2, y2 = line
                     line_slope = np.rad2deg(np.arctan2((y2 - y1), (x2 - x1)))
-                    print(line_slope)
+                    # print(line_slope)
                     
                     if -32 <= line_slope <= -27 or 27 <= line_slope <= 32:
                         print(f'line slope: {line_slope}')
@@ -201,7 +201,7 @@ class ZigZagPlayer:
             #         x_intersection, y_intersection = x, y
             #         break
 
-            distance = np.linalg.norm([x_intersection - ball_cx, y_intersection - ball_cy])
+            distance = np.linalg.norm([x_intersection + ball_cx, y_intersection - ball_cy])
             print(distance)
 
             t6 = time.time()
