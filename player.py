@@ -71,6 +71,9 @@ class ZigZagPlayer:
         for frame in feed:
             t0 = time.time()
 
+            frame = cv2.resize(frame, (300, 600))
+            # print(frame.shape)
+
             frame = frame[150:300, :, :]
 
             frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -94,11 +97,11 @@ class ZigZagPlayer:
             frame_gray = clahe.apply(frame_gray)
             # frame_equalized = cv2.equalizeHist(frame_gray)
             # frame_equalized = cv2.equalizeHist(frame_equalized)
-            frame_blur = cv2.GaussianBlur(frame_gray, (7,7), 1)
-            frame_canny = cv2.Canny(frame_blur, 60, 150)
-            frame_canny = cv2.morphologyEx(frame_canny, cv2.MORPH_CLOSE, np.ones((3,3), 'uint8'), iterations=1)
+            frame_blur = cv2.GaussianBlur(frame_gray, (5,5), 1)
+            frame_canny = cv2.Canny(frame_blur, 20, 90)
+            # frame_canny = cv2.morphologyEx(frame_canny, cv2.MORPH_CLOSE, np.ones((3,3), 'uint8'), iterations=1)
             # diamond_mask = cv2.inRange(frame_hsv, np.array([150, 50, 50]), np.array([170, 255, 255]))
-            # diamond_mask = cv2.dilate(diamond_mask, np.ones((3,3), 'uint8'), iterations=1)
+            # frame_canny = cv2.dilate(frame_canny, np.ones((3,3), 'uint8'), iterations=1)
             # frame_canny = cv2.bitwise_and(frame_canny, cv2.bitwise_not(diamond_mask), mask=None)
             # frame_canny_s = cv2.bitwise_and(frame_canny_s, frame_canny_gray, mask=None)
             t4 = time.time()
@@ -111,7 +114,7 @@ class ZigZagPlayer:
             if contours is not None:
                 for contour in contours:
                     M = cv2.moments(contour)
-                    if (90 <= cv2.contourArea(contour) <= 110) and (110 <= M['m01'] / M['m00'] <= 170):
+                    if (50 <= cv2.contourArea(contour) <= 200): #(110 <= M['m01'] / M['m00'] <= 170):
                         ball_contour = contour
                         # print(f'area : {cv2.contourArea(ball_contour)}')
                         ball_cx = M['m10'] / M['m00'] 
@@ -136,7 +139,7 @@ class ZigZagPlayer:
             frame_ball = cv2.drawContours(blank, [ball_contour], -1, (0,255,255), 1)
             cv2.putText(frame_ball, f'ball speed: {int(velocity)}px/sec', (2,15), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0,200,0), 1)
 
-            angle = -26.5 if velocity > 0 else -153.5 # values I tested and found to be best
+            angle = -29.5 if velocity > 0 else -150.5 # values I tested and found to be best
             angle_rad = np.deg2rad(angle)
 
             slope = np.tan(angle_rad)
@@ -149,25 +152,26 @@ class ZigZagPlayer:
             # frame = cv2.line(frame, pt1, pt2, (0,100,0), 3)
 
             x_intersection, y_intersection = pt2
-            blnk = np.zeros(frame_canny.shape)
-            lines = cv2.HoughLinesP(frame_canny, 1, 1*np.pi/180, 20, minLineLength=10, maxLineGap=10)
+            # blnk = np.zeros(frame_canny.shape)
+            lines = cv2.HoughLinesP(frame_canny, 1, 1*np.pi/180, 20, minLineLength=8, maxLineGap=5)
             if lines is not None:
                 for line in lines:
                     x1, y1, x2, y2 = line
                     line_slope = np.rad2deg(np.arctan2((y2 - y1), (x2 - x1)))
-                    # print(line_slope)
+                    print(line_slope)
                     
-                    if -27 <= line_slope <= -24 or 24 <= line_slope <= 27:
-                        blnk = cv2.line(blnk, (x1,y1), (x2,y2), (255,255,255), 2)
+                    if -32 <= line_slope <= -27 or 27 <= line_slope <= 32:
+                        print(f'line slope: {line_slope}')
+                        frame = cv2.line(frame, (x1,y1), (x2,y2), (0,0,0), 3)
                         intersection = line_intersection(pt1, pt2, (x1,y1), (x2,y2))
     
                         if intersection is not None: # and not self.first_intersection:
                             condition = intersection[0] > pt1[0] + 3 if velocity > 0 else intersection[0] < pt1[0] - 3
                             if condition:
                                 print('intersection found')
-                                blnk = cv2.line(blnk, (x1,y1), (x2,y2), (255,255,255), 2)
+                                # blnk = cv2.line(blnk, (x1,y1), (x2,y2), (255,255,255), 2)
                                 x_intersection, y_intersection = intersection
-                                cv2.circle(blnk, (x_intersection, y_intersection), 6, (255,255,255), -1)
+                                # cv2.circle(blnk, (x_intersection, y_intersection), 6, (255,255,255), -1)
                                 # self.first_intersection = True
 
             # if not x_intersection and not y_intersection:
@@ -221,7 +225,7 @@ class ZigZagPlayer:
 
             # self.process_time = time.time() - start_time
 
-            cv2.imshow('hough_line', blnk)
+            # cv2.imshow('hough_line', blnk)
             cv2.imshow('frame', frame)
             cv2.imshow('blurred', frame_blur)
             cv2.imshow('ball', frame_ball_t)
