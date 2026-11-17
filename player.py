@@ -201,7 +201,7 @@ class ZigZagPlayer:
             #         x_intersection, y_intersection = x, y
             #         break
 
-            distance = np.linalg.norm([x_intersection - ball_cx, y_intersection - ball_cy])
+            distance = np.linalg.norm([x_intersection * ball_cx, y_intersection - ball_cy])
             print(distance)
 
             t6 = time.time()
